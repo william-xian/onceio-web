@@ -71,9 +71,7 @@ function genericFormItem(field: FieldModel, val: any, showLabel: boolean) {
     return (<Form.Item
         label={showLabel ? field.name : ''}
         name={field.name}
-        style={{ margin: 0 }}
-        rules={rules}
-    >
+        rules={rules}>
         {inputType}
     </Form.Item>)
 }
@@ -103,14 +101,11 @@ class StdApi extends React.Component {
     constructor(props: any) {
         super(props);
         this.props = props;
-        console.log("constructor", props);
     }
 
     componentDidMount() {
-        console.log("componentDidMount", this.props);
     }
     componentDidUpdate() {
-        console.log("componentDidUpdate", this.props);
         const { apiIndex } = this.props;
         if (this.last.apiIndex !== apiIndex) {
             this.last.apiIndex = apiIndex;
@@ -118,10 +113,8 @@ class StdApi extends React.Component {
         }
     }
     forceUpdate() {
-        console.log("forceUpdate", this.props);
     }
     componentDidCatch() {
-        console.log("componentDidCatch", this.props);
     }
     isEditing(record: any) {
         const { editing } = this.state;
@@ -129,7 +122,6 @@ class StdApi extends React.Component {
     }
     init() {
         const { apiIndex } = this.props;
-        const { current, pageSize, total } = this.state.pagination;
 
         if (apiIndex.length >= 1) {
             let meta: OnceIOApiModel = this.props.meta;
@@ -161,10 +153,10 @@ class StdApi extends React.Component {
                     }
                 }
                 if (apiIndex.length === 1 && srvApi.entityClass != null) {
-                    let params: any = { $page: current, $pageSize: pageSize };
+                    let params: any = { $page: 0, $pageSize: 10 };
                     this.setState({ loading: true });
                     Api.get(srvApi.api, { params: params }).then((resp: any) => {
-                        let newTotal = resp.data.total || total;
+                        let newTotal = resp.data.total || 0;
                         this.setState({ srvApi: srvApi, columns: columns, showEditableTable: true, loading: false, data: resp.data.data, pagination: { total: newTotal } });
                     });
                 } else if (apiIndex.length === 2) {
@@ -200,10 +192,10 @@ class StdApi extends React.Component {
             this.setState({ loading: true });
             Api.get(srvApi.api, { params: params }).then((resp: any) => {
                 let newTotal = resp.data.total || total;
-                this.setState({ loading: false, data: resp.data.data, pagination: { total: newTotal } });
+                this.setState({ loading: false, data: resp.data.data, pagination: { current: current, pageSize: pageSize, total: newTotal } });
             });
         } else {
-            this.setState({ data: [], pagination: { current: 1, pageSize: pageSize, total: 0 } });
+            this.setState({ data: [], pagination: { current: 0, pageSize: pageSize, total: 0 } });
         }
     };
 
@@ -213,8 +205,7 @@ class StdApi extends React.Component {
         this.search(current, pageSize, evt);
     };
     onTableChange = (pagination: any) => {
-        this.setState({ pagination: pagination });
-        const { current, pageSize } = this.state.pagination;
+        const { current, pageSize } = pagination;
         const { searchText } = this.state;
         this.search(current, pageSize, searchText);
     };
@@ -229,12 +220,18 @@ class StdApi extends React.Component {
         const { srvApi, curApi } = this.state;
         let api = srvApi.api + curApi.api;
         if (api.indexOf('{') !== -1) {
-            api = eval('`' + api.replace('{', '${values.') + '`');
+            let vars = api.split('{');
+            for (let v of vars) {
+                if (v.endsWith('}')) {
+                    let key = v.substring(0, v.length - 1);
+                    api = api.replaceAll(`{${key}}`, values[key]);
+                }
+            }
         }
         let callback = (resp: any) => {
             this.setState({ response: JSON.stringify(resp.data, null, ' ') });
         };
-        switch (curApi.httpMethods[0]) {
+        switch (curApi.httpMethod) {
             case "GET":
                 Api.get(api, { params: values }).then(callback);
                 break;
@@ -326,14 +323,11 @@ class StdApi extends React.Component {
         const layout = {
             labelCol: { span: 2 },
             wrapperCol: { span: 8 },
-          };
-          const tailLayout = {
-            wrapperCol: { offset: 8, span: 16 },
-          };
+        };
         let result: any = [];
         let paramItems: any = [];
         let returnType: any = {};
-        let api = curApi.httpMethods + ":" + srvApi.api + curApi.api;
+        let api = curApi.httpMethod + ":" + srvApi.api + curApi.api;
         result.push((<h2>api: {api}</h2>));
         result.push((<h2>Brief:<p>{srvApi.brief}</p><p>{curApi.brief}</p></h2>));
         for (let x of curApi.params) {

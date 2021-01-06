@@ -46,7 +46,7 @@ class App extends React.Component {
 
   onSelectMenu = (evt: any) => {
     let apiIndex = evt.key.split(',');
-    let meta: any = this.state.meta;
+    let meta = this.state.meta;
     let curApi = meta.api[apiIndex[0]];
     let curSubApi = curApi.subApi[apiIndex[1]];
     let api = curApi.api + curSubApi.api;
@@ -56,7 +56,7 @@ class App extends React.Component {
   render() {
     const { collapsed } = this.state;
     let apiMenu = [];
-    let meta: any = this.state.meta || {};
+    let meta = this.state.meta || new OnceIOApiModel();
     let api = meta.api || [];
     let apiIndex = 0;
     for (let item of api) {
@@ -65,7 +65,7 @@ class App extends React.Component {
       let subApiIndex = 0;
       for (let sub of item.subApi) {
         let itemKey = apiIndex + "," + subApiIndex++;
-        let itemTitle = sub.httpMethods.join('|') + ":" + item.api + sub.api;
+        let itemTitle = sub.httpMethod + ":" + item.api + sub.api;
         menuItems.push((<Menu.Item key={itemKey} onClick={this.onSelectMenu} >{itemTitle}</Menu.Item>));
       }
       apiMenu.push((<SubMenu key={apiIndex} title={menuKey} onTitleClick={this.onEntity} >{menuItems}</SubMenu>));

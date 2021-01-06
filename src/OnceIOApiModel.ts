@@ -16,7 +16,7 @@ export class ApiModel {
     name: string = '';
     api: string = '';
     brief: string = '';
-    httpMethods: Array<string> = new Array<string>();
+    httpMethod: string = '';
     params: Array<FieldModel> = new Array<FieldModel>();
     returnType: string = '';
 }
