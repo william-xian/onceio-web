@@ -97,9 +97,9 @@ class StdApi extends React.Component {
         data: [],
         pagination: {
             current: 0,
-            pageSize: 20,
+            pageSize: 10,
             total: 0,
-            pageSizeOptions: [{ label: "20", value: 20 }, { label: "50", value: 50 }, { label: "1000", value: 1000 }]
+            pageSizeOptions: [{ label: "10", value: 10 },{ label: "20", value: 20 }, { label: "50", value: 50 }, { label: "1000", value: 1000 }]
         }
     };
     constructor(props: any) {
@@ -339,7 +339,7 @@ class StdApi extends React.Component {
                         {tags}
                     </TagGroup>
                 </Row>
-                <Table rowKey="id" data={data} height={window.screen.height - 300} virtualized>
+                <Table rowKey="id" data={data} autoHeight={true} virtualized>
                     <Table.Column width={64} fixed="left">
                         <Table.HeaderCell>
                             <Checkbox
@@ -371,8 +371,7 @@ class StdApi extends React.Component {
                                 }
                                 return (
                                     <span>
-                                        <a onClick={handleAction}> Edit </a> |{' '}
-                                        <a onClick={handleAction}> Remove </a>
+                                        <a onClick={handleAction}>Remove</a>
                                     </span>
                                 );
                             }}
