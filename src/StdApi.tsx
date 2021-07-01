@@ -1,51 +1,17 @@
 
 import React from 'react';
-import 'antd/dist/antd.css';
-import './index.css';
-import { Table, Input, Row, Form, InputNumber, DatePicker, Button } from 'antd';
-import moment from 'moment';
-import 'moment/locale/zh-cn';
+import { Table, Input, Row, Form, InputNumber, DatePicker, Button, FormControl, FormGroup, ControlLabel, ButtonToolbar, Checkbox, IconButton, Icon, Popover, Whisper, InputGroup, TagGroup, Tag } from 'rsuite';
+import TablePagination from 'rsuite/lib/Table/TablePagination';
 import Api from './Api';
 import { ApiModel, FieldModel, OnceIOApiModel, ServiceModel } from './OnceIOApiModel';
-import { Rule } from 'antd/lib/form';
 
-const { Search } = Input;
-
-interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
-    editing: boolean;
-    dataIndex: string;
-    title: any;
-    meta: FieldModel;
-    index: number;
-    children: React.ReactNode;
-}
-
-const EditableCell: React.FC<EditableCellProps> = ({
-    editing,
-    dataIndex,
-    title,
-    meta,
-    index,
-    children,
-    ...restProps
-}) => {
-    let val: any;
-    if (children instanceof Array) {
-        val = children[1];
-    }
-    if (editing) {
-        let formItem = genericFormItem(meta || new FieldModel(), val, false);
-        return (<td {...restProps}>{formItem}</td>);
-    } else {
-        return (<td {...restProps}>{children}</td>);
-    }
-};
+import './StdApi.css'
 
 
 function genericFormItem(field: FieldModel, val: any, showLabel: boolean) {
     let numberType = ['java.lang.Integer', 'java.lang.Short', 'java.lang.Float', 'java.lang.Double', 'int', 'short', 'float', 'double'];
     let dateType = ['java.sql.Date', 'java.sql.Timestamp'];
-    let rules = new Array<Rule>();
+    let rules = new Array<any>();
     let inputType = <Input placeholder={field.comment} defaultValue={val} />;
     if (numberType.includes(field.type)) {
         inputType = <InputNumber placeholder={field.comment} defaultValue={val} />
@@ -55,7 +21,7 @@ function genericFormItem(field: FieldModel, val: any, showLabel: boolean) {
         } else {
             val = new Date(val).toISOString();
         }
-        inputType = <DatePicker showTime placeholder={field.comment} defaultValue={moment(val, 'YYYY-MM-DD HH:mm:ss')} />
+        inputType = <DatePicker showTime placeholder={field.comment} defaultValue={val} />
     }
     rules.push({
         required: !field.nullable,
@@ -68,19 +34,56 @@ function genericFormItem(field: FieldModel, val: any, showLabel: boolean) {
                 message: `${field.name} is not matched ${field.pattern}!`,
             });
     }
-    return (<Form.Item
-        label={showLabel ? field.name : ''}
-        name={field.name}
-        rules={rules}>
-        {inputType}
-    </Form.Item>)
+    return (
+        <FormGroup>
+            <ControlLabel>{showLabel ? field.name : ''}</ControlLabel>
+            <FormControl name={field.name} type={inputType}>
+            </FormControl>
+        </FormGroup>
+    );
 }
 
+class MetaCell extends React.Component<{ rowData?: any, dataKey: string, type: string }, any>{
+    render() {
+        const { rowData, dataKey, type } = this.props;
+        let showData = rowData[dataKey];
+        if (type === 'java.sql.Timestamp') {
+            if (!showData) {
+                return (
+                    <Table.Cell {...this.props}>
+                        --
+                    </Table.Cell>
+                );
+            }
+            let d = new Date(showData);
+            showData = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000).toISOString();
+            return (
+                <Table.Cell {...this.props}>
+                    {showData}
+                </Table.Cell>
+            );
+        } else if (type == 'image') {
+            return (
+                <Table.Cell {...this.props}>
+                    <img src={showData} width="16" />
+                </Table.Cell>
+            );
+        } else {
+            return (
+                <Table.Cell {...this.props}>
+                    {showData}
+                </Table.Cell>
+            );
+        }
+    }
+}
 
 class StdApi extends React.Component {
     props = { apiIndex: [], meta: new OnceIOApiModel() };
     last = { apiIndex: [], searchText: '0' };
     state = {
+        allChecked: false,
+        indeterminate: false,
         showEditableTable: false,
         selectedRowKeys: [],
         editing: false,
@@ -88,14 +91,15 @@ class StdApi extends React.Component {
         curApi: new ApiModel(),
         loading: false,
         response: '',
-        searchText: '',
         columns: new Array<any>(),
+        formValue: new Object(),
+        params: new Object(),
         data: [],
         pagination: {
             current: 0,
-            pageSize: 10,
+            pageSize: 20,
             total: 0,
-            pageSizeOptions: ["10", "20", "50", "100"]
+            pageSizeOptions: [{ label: "20", value: 20 }, { label: "50", value: 50 }, { label: "1000", value: 1000 }]
         }
     };
     constructor(props: any) {
@@ -122,7 +126,8 @@ class StdApi extends React.Component {
     }
     init() {
         const { apiIndex } = this.props;
-
+        const { params,pagination } = this.state;
+        let args: any = params;
         if (apiIndex.length >= 1) {
             let meta: OnceIOApiModel = this.props.meta;
             let srvApi: ServiceModel = meta.api[apiIndex[0]];
@@ -133,31 +138,109 @@ class StdApi extends React.Component {
                     let model = map.get(srvApi.entityClass);
                     if (model) {
                         for (let c of model.fields) {
-                            let col: any = {
-                                title: c.name,
-                                dataIndex: c.name,
-                                key: 'id',
-                                fixed: 'left',
-                                onCell: (record: any) => {
-                                    return ({
-                                        record,
-                                        meta: c,
-                                        dataIndex: c.name,
-                                        title: c.name,
-                                        editing: this.isEditing(record),
-                                    });
-                                },
-                            };
+                            let align: any = (c.type == 'java.lang.String') ? 'right' : 'left';
+
+                            const speaker = (
+                                <Popover title={c.name}>
+                                    <InputGroup>
+                                        <InputGroup.Addon>=</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$eq'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+
+                                    <InputGroup>
+                                        <InputGroup.Addon>&lt;</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$lt'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+                                    <InputGroup>
+                                        <InputGroup.Addon>&lt;=</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$le'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+                                    <InputGroup>
+                                        <InputGroup.Addon>&gt;</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$gt'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+                                    <InputGroup>
+                                        <InputGroup.Addon>&ge;</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$ge'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+
+                                    <InputGroup>
+                                        <InputGroup.Addon>in</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$in'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+
+                                    <InputGroup>
+                                        <InputGroup.Addon>match</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$match'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+
+                                    <InputGroup>
+                                        <InputGroup.Addon>reg</InputGroup.Addon>
+                                        <Input onChange={(val) => {
+                                            args[c.name + '$regexp'] = val;
+                                        }}></Input>
+                                        <InputGroup.Addon>
+                                            <Icon icon="search" onClick={() => { this.onSearch() }} />
+                                        </InputGroup.Addon>
+                                    </InputGroup>
+                                </Popover>
+                            );
+                            let col = (
+                                <Table.Column align={align} resizable width={160}>
+                                    <Table.HeaderCell>{c.name}
+                                        <Whisper trigger="click" speaker={speaker}>
+                                            <IconButton size="xs" icon={<Icon icon="search" />}></IconButton>
+                                        </Whisper>
+                                    </Table.HeaderCell>
+                                    <MetaCell dataKey={c.name} type={c.type} {...this.props} ></MetaCell>
+                                </Table.Column>
+                            );
                             columns.push(col);
                         }
                     }
                 }
                 if (apiIndex.length === 1 && srvApi.entityClass != null) {
-                    let params: any = { $page: 0, $pageSize: 10 };
+                    let params: any = { $page: pagination.current, $pageSize: pagination.pageSize };
                     this.setState({ loading: true });
                     Api.get(srvApi.api, { params: params }).then((resp: any) => {
                         let newTotal = resp.data.total || 0;
-                        this.setState({ srvApi: srvApi, columns: columns, showEditableTable: true, loading: false, data: resp.data.data, pagination: { total: newTotal } });
+                        pagination.total = newTotal;
+                        this.setState({ srvApi: srvApi, columns: columns, showEditableTable: true, loading: false, data: resp.data.data, pagination });
                     });
                 } else if (apiIndex.length === 2) {
                     let curApi = srvApi.subApi[apiIndex[1]];
@@ -170,44 +253,30 @@ class StdApi extends React.Component {
 
     }
 
-    search(current: number, pageSize: number, searchText: string) {
-        const { total } = this.state.pagination;
-        const { srvApi } = this.state;
-        let params: any = { $page: current, $pageSize: pageSize };
-
-        if (searchText !== '') {
-            if (this.last.searchText !== searchText) {
-                params.$page = 0;
-            }
-            this.last.searchText = searchText;
-            for (let kvStr of searchText.split(";")) {
-                let kv = kvStr.split(":");
-                if (kv.length === 2) {
-                    params[kv[0].trim()] = kv[1].trim();
-                }
-            }
-        }
-
+    search(current: number, pageSize: number) {
+        const { pagination } = this.state;
+        const { srvApi, params } = this.state;
+        let args: any = Object.assign({}, params, { $page: current, $pageSize: pageSize });
         if (srvApi && srvApi.api) {
             this.setState({ loading: true });
-            Api.get(srvApi.api, { params: params }).then((resp: any) => {
-                let newTotal = resp.data.total || total;
-                this.setState({ loading: false, data: resp.data.data, pagination: { current: current, pageSize: pageSize, total: newTotal } });
+            Api.get(srvApi.api, { params: args }).then((resp: any) => {
+                let newTotal = resp.data.total || pagination.total;
+                Object.assign(pagination, { current: current, pageSize: pageSize, total: newTotal } )
+                this.setState({ loading: false, data: resp.data.data, pagination});
             });
         } else {
-            this.setState({ data: [], pagination: { current: 0, pageSize: pageSize, total: 0 } });
+            Object.assign(pagination, { current: 0, pageSize: pageSize, total: 0  } )
+            this.setState({ data: [], pagination});
         }
     };
 
-    onSearch = (evt: any) => {
-        this.setState({ searchText: evt });
+    onSearch = () => {
         const { current, pageSize } = this.state.pagination;
-        this.search(current, pageSize, evt);
+        this.search(1, pageSize);
     };
     onTableChange = (pagination: any) => {
         const { current, pageSize } = pagination;
-        const { searchText } = this.state;
-        this.search(current, pageSize, searchText);
+        this.search(current, pageSize);
     };
 
     onSelectChange = (selectedRowKeys: any) => {
@@ -215,9 +284,9 @@ class StdApi extends React.Component {
         this.setState({ selectedRowKeys });
     };
 
-    onFinish = (values: any) => {
-        console.log(values);
-        const { srvApi, curApi } = this.state;
+    onSubmit = () => {
+        const { srvApi, curApi, formValue } = this.state;
+        let values: any = formValue;
         let api = srvApi.api + curApi.api;
         if (api.indexOf('{') !== -1) {
             let vars = api.split('{');
@@ -253,83 +322,107 @@ class StdApi extends React.Component {
 
 
     renderStdApi() {
-        const { editing, columns, data, pagination, selectedRowKeys, srvApi, loading } = this.state;
+        const { editing, columns, data, pagination, selectedRowKeys, srvApi, loading, allChecked, indeterminate, params } = this.state;
+
+        const tags = new Array<any>();
+        let obj: any = params;
+        for (let x in params) {
+            let name = x.replace("$", " ") + " " + obj[x];
+            tags.push((<Tag closable onClose={() => { delete obj[x]; this.setState({ params: obj });this.onSearch(); }}>{name}</Tag>));
+        }
+
         const self = this;
-        const rowSelection = {
-            selectedRowKeys,
-            columnWidth: "65px",
-            onChange: this.onSelectChange,
-            selections: [
-                Table.SELECTION_INVERT,
-                {
-                    key: 'delete',
-                    text: 'Delete selected rows',
-                    onSelect: (changableRowKeys: any) => {
-                        let params = { "id$in": selectedRowKeys.join(",") };
-                        Api.delete(srvApi.api, { params: params }).then((resp: any) => {
-                            this.setState({ loading: false });
-                        });
-                    },
-                },
-                {
-                    key: 'editable',
-                    text: 'Editable switch',
-                    onSelect: (changeableRowKeys: any) => {
-                        this.setState({ editing: !editing });
-                    },
-                },
-                {
-                    key: 'save',
-                    text: 'Save selected rows',
-                    onSelect: (changeableRowKeys: any) => {
-                        console.log(changeableRowKeys);
-                    },
-                }
-            ],
-            onSelect: (record: any, selected: any, selectedRows: any, nativeEvent: any) => {
-                console.log(selected, selectedRows);
-            }
-        };
         return (
             <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
                 <Row>
-                    <Search placeholder="input search text" onSearch={self.onSearch} enterButton />
+                    <TagGroup>
+                        {tags}
+                    </TagGroup>
                 </Row>
+                <Table rowKey="id" data={data} height={window.screen.height - 300} virtualized>
+                    <Table.Column width={64} fixed="left">
+                        <Table.HeaderCell>
+                            <Checkbox
+                                inline
+                                checked={allChecked}
+                                indeterminate={indeterminate}
+                                onChange={() => this.handleCheckAll()}
+                            /></Table.HeaderCell>
+                        <Table.Cell {...this.props}>
+                            {
+                                (rowData: any) => (<Checkbox
+                                    inline
+                                    checked={rowData.$checked}
+                                    onChange={() => {
+                                        this.handleCheckAll(rowData);
+                                    }}
+                                />)
+                            }
 
-                <Table
-                    components={{
-                        body: {
-                            cell: EditableCell
-                        },
-                    }}
-                    bordered
-                    dataSource={data}
-                    columns={columns}
-                    rowSelection={rowSelection}
-                    rowKey="id"
-                    rowClassName="editable-row"
-                    pagination={pagination}
-                    loading={loading}
-                    onChange={this.onTableChange}
+                        </Table.Cell>
+                    </Table.Column>
+                    {columns}
+                    <Table.Column width={120} fixed="right">
+                        <Table.HeaderCell>Action</Table.HeaderCell>
+                        <Table.Cell>
+                            {(rowData: any) => {
+                                function handleAction() {
+                                    alert(`id:${rowData.id}`);
+                                }
+                                return (
+                                    <span>
+                                        <a onClick={handleAction}> Edit </a> |{' '}
+                                        <a onClick={handleAction}> Remove </a>
+                                    </span>
+                                );
+                            }}
+                        </Table.Cell>
+                    </Table.Column>
+                </Table>
+                <TablePagination
+                    lengthMenu={pagination.pageSizeOptions}
+                    activePage={pagination.current}
+                    displayLength={pagination.pageSize}
+                    total={pagination.total}
+                    onChangePage={(page) => this.onTableChange({ current: page, pageSize: pagination.pageSize })}
+                    onChangeLength={(pageSize) => this.onTableChange({ current: pagination.current, pageSize })}
                 />
             </div>);
     }
 
+    handleCheckAll(rowData?: any) {
+        const { data } = this.state;
+        if (rowData) {
+            rowData.$checked = !rowData.$checked;
+        } else {
+            for (let row of data) {
+                let item: any = row;
+                item.$checked = !item.$checked;
+            }
+        }
+        let allUncecked = true;
+        let allChecked = true;
+        for (let row of data) {
+            let item: any = row;
+            if (item.$checked) {
+                allUncecked = false;
+            } else {
+                allChecked = false;
+            }
+        }
+        this.setState({ allChecked, indeterminate: (!allChecked && !allUncecked), data });
+    }
 
 
     renderApi() {
         const { srvApi, curApi, response } = this.state;
         const { meta } = this.props;
-        const layout = {
-            labelCol: { span: 2 },
-            wrapperCol: { span: 8 },
-        };
         let result: any = [];
         let paramItems: any = [];
         let returnType: any = {};
         let api = curApi.httpMethod + ":" + srvApi.api + curApi.api;
-        result.push((<h2>api: {api}</h2>));
-        result.push((<h2>Brief:<p>{srvApi.brief}</p><p>{curApi.brief}</p></h2>));
+        result.push((<p>api: {api}</p>));
+        result.push((<p>Brief:<p>{srvApi.brief}</p><p>{curApi.brief}</p></p>));
         for (let x of curApi.params) {
             let model = meta.model.get(x.type);
             if (model != null && model.fields != null) {
@@ -342,13 +435,13 @@ class StdApi extends React.Component {
                 paramItems.push(item);
             }
         }
-        result.push((<Form {...layout} onFinish={this.onFinish}>
+        result.push((<Form layout="horizontal">
             {paramItems}
-            <Form.Item wrapperCol={{ span: 4, offset: 2 }}>
-                <Button type="primary" htmlType="submit">
-                    Submit
-            </Button>
-            </Form.Item></Form>));
+            <FormGroup>
+                <ButtonToolbar><Button appearance="primary" onClick={this.onSubmit}>Submit</Button></ButtonToolbar>
+            </FormGroup>
+        </Form>));
+
         let responseDisplay = response;
         if (!response) {
             let model = meta.model.get(curApi.returnType);

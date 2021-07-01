@@ -1,22 +1,14 @@
 import React from 'react';
 import Api from './Api';
-import 'antd/dist/antd.css';
-import './index.css';
-import { Layout, Menu, Breadcrumb } from 'antd';
-import {
-  DesktopOutlined,
-  PieChartOutlined
-} from '@ant-design/icons';
+import { Container, Sidebar, Breadcrumb, Header, Content, Tree } from 'rsuite';
 import StdApi from './StdApi';
 import OnceIOApiModel from './OnceIOApiModel';
-
-
-const { Header, Content, Footer, Sider } = Layout;
-const { SubMenu } = Menu;
+import 'rsuite/dist/styles/rsuite-default.css'
+import './App.css'
 
 class App extends React.Component {
   state = {
-    collapsed: false,
+    collapsed: true,
     meta: new OnceIOApiModel(),
     api: '',
     apiIndex: []
@@ -27,7 +19,7 @@ class App extends React.Component {
       let meta = this.state.meta;
 
       meta.api = data.api;
-      for(let x in data.model) {
+      for (let x in data.model) {
         meta.model.set(x, data.model[x]);
       }
       this.setState({ meta: meta });
@@ -37,67 +29,60 @@ class App extends React.Component {
     this.setState({ collapsed });
   };
 
-  onEntity = (evt: any) => {
-    let apiIndex = evt.key.split(',');
-    let meta: any = this.state.meta;
-    let curApi = meta.api[apiIndex[0]];
-    this.setState({ api: curApi.api, apiIndex: apiIndex });
-  };
-
   onSelectMenu = (evt: any) => {
-    let apiIndex = evt.key.split(',');
+    let apiIndex = evt.value.split(',');
     let meta = this.state.meta;
     let curApi = meta.api[apiIndex[0]];
-    let curSubApi = curApi.subApi[apiIndex[1]];
-    let api = curApi.api + curSubApi.api;
-    this.setState({ api: api, apiIndex: apiIndex});
+    if(apiIndex.length == 2){
+      let curSubApi = curApi.subApi[apiIndex[1]];
+      let api = curApi.api + curSubApi.api;
+      this.setState({ api: api, apiIndex: apiIndex });
+    } else {
+      this.setState({ api: curApi.api, apiIndex: apiIndex });
+    }
   };
 
   render() {
-    const { collapsed } = this.state;
-    let apiMenu = [];
+    const { collapsed, apiIndex } = this.state;
     let meta = this.state.meta || new OnceIOApiModel();
     let api = meta.api || [];
-    let apiIndex = 0;
+    let apiIdx = 0;
+    let data = [];
     for (let item of api) {
       let menuKey = item.api || '/';
-      let menuItems = [];
       let subApiIndex = 0;
+      let children = new Array<any>();
       for (let sub of item.subApi) {
-        let itemKey = apiIndex + "," + subApiIndex++;
+        let itemKey = apiIdx + "," + subApiIndex++;
         let itemTitle = sub.httpMethod + ":" + item.api + sub.api;
-        menuItems.push((<Menu.Item key={itemKey} onClick={this.onSelectMenu} >{itemTitle}</Menu.Item>));
+        children.push({
+          value: itemKey,
+          label: itemTitle
+        });
       }
-      apiMenu.push((<SubMenu key={apiIndex} title={menuKey} onTitleClick={this.onEntity} >{menuItems}</SubMenu>));
-      apiIndex++;
+      data.push({
+        value: ''+apiIdx,
+        label: menuKey,
+        children: children
+      });
+      apiIdx++;
     }
-
-
     return (
-      <Layout style={{ minHeight: '100vh' }}>
-        <Sider collapsible collapsed={collapsed} onCollapse={this.onCollapse}>
-          <div className="logo" />
-          <Menu theme="dark" defaultSelectedKeys={['m-1']} mode="inline">
-            <Menu.Item key="m-1" icon={<PieChartOutlined />}>
-              Option 1
-            </Menu.Item>
-            <Menu.Item key="m-api" icon={<DesktopOutlined />}>
-              API
-            </Menu.Item>
-            {apiMenu}
-          </Menu>
-        </Sider>
-        <Layout className="site-layout">
-          <Header className="site-layout-background" style={{ padding: 0 }} />
-          <Content style={{ margin: '0 16px' }}>
+      <Container style={{ height: '100%' }}>
+        <Sidebar style={{ height: '100%' }}>
+            <Tree data={data} style={{maxHeight: 'none'}} onSelect={this.onSelectMenu}/>
+        </Sidebar>
+        <Container>
+          <Header>
             <Breadcrumb style={{ margin: '16px 0' }}>
               <Breadcrumb.Item>{this.state.api}</Breadcrumb.Item>
             </Breadcrumb>
+          </Header>
+          <Content>
             <StdApi meta={this.state.meta} apiIndex={this.state.apiIndex} />
           </Content>
-          <Footer style={{ textAlign: 'center' }}>Xian</Footer>
-        </Layout>
-      </Layout>
+        </Container>
+      </Container>
     );
   }
 }
