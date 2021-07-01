@@ -37,7 +37,7 @@ function genericFormItem(field: FieldModel, val: any, showLabel: boolean) {
     return (
         <FormGroup>
             <ControlLabel>{showLabel ? field.name : ''}</ControlLabel>
-            <FormControl name={field.name} type={inputType}>
+            <FormControl name={field.name}>
             </FormControl>
         </FormGroup>
     );
@@ -99,7 +99,7 @@ class StdApi extends React.Component {
             current: 0,
             pageSize: 10,
             total: 0,
-            pageSizeOptions: [{ label: "10", value: 10 },{ label: "20", value: 20 }, { label: "50", value: 50 }, { label: "1000", value: 1000 }]
+            pageSizeOptions: [{ label: "10", value: 10 }, { label: "20", value: 20 }, { label: "50", value: 50 }, { label: "1000", value: 1000 }]
         }
     };
     constructor(props: any) {
@@ -126,7 +126,7 @@ class StdApi extends React.Component {
     }
     init() {
         const { apiIndex } = this.props;
-        const { params,pagination } = this.state;
+        const { params, pagination } = this.state;
         let args: any = params;
         if (apiIndex.length >= 1) {
             let meta: OnceIOApiModel = this.props.meta;
@@ -261,12 +261,12 @@ class StdApi extends React.Component {
             this.setState({ loading: true });
             Api.get(srvApi.api, { params: args }).then((resp: any) => {
                 let newTotal = resp.data.total || pagination.total;
-                Object.assign(pagination, { current: current, pageSize: pageSize, total: newTotal } )
-                this.setState({ loading: false, data: resp.data.data, pagination});
+                Object.assign(pagination, { current: current, pageSize: pageSize, total: newTotal })
+                this.setState({ loading: false, data: resp.data.data, pagination });
             });
         } else {
-            Object.assign(pagination, { current: 0, pageSize: pageSize, total: 0  } )
-            this.setState({ data: [], pagination});
+            Object.assign(pagination, { current: 0, pageSize: pageSize, total: 0 })
+            this.setState({ data: [], pagination });
         }
     };
 
@@ -287,6 +287,7 @@ class StdApi extends React.Component {
     onSubmit = () => {
         const { srvApi, curApi, formValue } = this.state;
         let values: any = formValue;
+        console.log(formValue);
         let api = srvApi.api + curApi.api;
         if (api.indexOf('{') !== -1) {
             let vars = api.split('{');
@@ -328,7 +329,7 @@ class StdApi extends React.Component {
         let obj: any = params;
         for (let x in params) {
             let name = x.replace("$", " ") + " " + obj[x];
-            tags.push((<Tag closable onClose={() => { delete obj[x]; this.setState({ params: obj });this.onSearch(); }}>{name}</Tag>));
+            tags.push((<Tag closable onClose={() => { delete obj[x]; this.setState({ params: obj }); this.onSearch(); }}>{name}</Tag>));
         }
 
         const self = this;
@@ -414,7 +415,7 @@ class StdApi extends React.Component {
 
 
     renderApi() {
-        const { srvApi, curApi, response } = this.state;
+        const { srvApi, curApi, response, formValue } = this.state;
         const { meta } = this.props;
         let result: any = [];
         let paramItems: any = [];
@@ -434,12 +435,16 @@ class StdApi extends React.Component {
                 paramItems.push(item);
             }
         }
-        result.push((<Form layout="horizontal">
-            {paramItems}
-            <FormGroup>
-                <ButtonToolbar><Button appearance="primary" onClick={this.onSubmit}>Submit</Button></ButtonToolbar>
-            </FormGroup>
-        </Form>));
+        result.push((
+            <Form layout="horizontal" formValue={formValue} onChange={formValue => {
+                this.setState({ formValue });
+              }}>
+                {paramItems}
+                <FormGroup>
+                    <ButtonToolbar><Button appearance="primary" onClick={this.onSubmit}>Submit</Button></ButtonToolbar>
+                </FormGroup>
+            </Form>
+        ));
 
         let responseDisplay = response;
         if (!response) {
