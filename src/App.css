@@ -3,18 +3,3 @@ body,
 #root {
     height: 100%;
 }
-
-.rs-tree {
-    background-color: #001529;
-    text-align: left;
-    color: #cccccc;
-}
-
-.rs-tree-node:hover,
-.rs-tree-node>.rs-tree-node-label>.rs-tree-node-label-content:hover,
-.rs-tree-node-active>.rs-tree-node-label>.rs-tree-node-label-content {
-    font-weight: bold;
-    background: #022e57 !important;
-    text-align: left;
-    color: #fff;
-}

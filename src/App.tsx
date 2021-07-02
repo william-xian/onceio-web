@@ -1,17 +1,18 @@
 import React from 'react';
 import Api from './Api';
-import { Container, Sidebar, Breadcrumb, Header, Content, Tree } from 'rsuite';
-import StdApi from './StdApi';
-import OnceIOApiModel from './OnceIOApiModel';
-import 'rsuite/dist/styles/rsuite-default.css'
+import { Container, Sidebar, Breadcrumb, Header, Content, Tree, Icon } from 'rsuite';
+import StdApi from './components/StdApi';
+import OnceIOApiModel from './model/OnceIOApiModel';
+import 'rsuite/dist/styles/rsuite-dark.css'
 import './App.css'
 
 class App extends React.Component {
   state = {
     collapsed: true,
     meta: new OnceIOApiModel(),
+    apiTree: [],
     api: '',
-    apiIndex: []
+    apiIndex: ''
   };
   componentDidMount() {
     Api.get('docs/apis').then((resp: any) => {
@@ -22,64 +23,81 @@ class App extends React.Component {
       for (let x in data.model) {
         meta.model.set(x, data.model[x]);
       }
-      this.setState({ meta: meta });
+
+      let metaApi = meta.api || [];
+      let apiIdx = 0;
+      let apiTree = [];
+      for (let item of metaApi) {
+        let menuKey = item.api || '/';
+        let subApiIndex = 0;
+        let children = new Array<any>();
+        for (let sub of item.subApi) {
+          let itemKey = apiIdx + "," + subApiIndex++;
+          let itemTitle = sub.httpMethod + ":" + item.api + sub.api;
+          children.push({
+            value: itemKey,
+            label: itemTitle
+          });
+        }
+        apiTree.push({
+          value: '' + apiIdx,
+          label: menuKey,
+          children: children
+        });
+        apiIdx++;
+      }
+      let menuTree = [
+        {
+          value: '$setting',
+          label: (<span><Icon icon="setting" /> Setting</span>),
+        },
+        {
+          value: '$api' + apiIdx,
+          label: (<span><Icon icon="setting" /> Api</span>),
+          children: apiTree
+        }
+      ];
+      this.setState({ meta: meta, apiTree: menuTree });
     });
   }
   onCollapse = (collapsed: boolean) => {
     this.setState({ collapsed });
   };
 
-  onSelectMenu = (evt: any) => {
-    let apiIndex = evt.value.split(',');
-    let meta = this.state.meta;
-    let curApi = meta.api[apiIndex[0]];
-    if(apiIndex.length == 2){
-      let curSubApi = curApi.subApi[apiIndex[1]];
-      let api = curApi.api + curSubApi.api;
-      this.setState({ api: api, apiIndex: apiIndex });
+  onSelectMenu = (activeNode: any, value: any, event: any) => {
+    if(value === '$setting'){
+    } else if(value === '$api'){
     } else {
-      this.setState({ api: curApi.api, apiIndex: apiIndex });
+      let apiIndex = value.split(',');
+      let meta = this.state.meta;
+      let curApi = meta.api[apiIndex[0]];
+      if (apiIndex.length === 2) {
+        let curSubApi = curApi.subApi[apiIndex[1]];
+        let api = curApi.api + curSubApi.api;
+        this.setState({ api: api, apiIndex: value });
+      } else {
+        this.setState({ api: curApi.api, apiIndex: value });
+      }
     }
   };
 
   render() {
-    const { collapsed, apiIndex } = this.state;
-    let meta = this.state.meta || new OnceIOApiModel();
-    let api = meta.api || [];
-    let apiIdx = 0;
-    let data = [];
-    for (let item of api) {
-      let menuKey = item.api || '/';
-      let subApiIndex = 0;
-      let children = new Array<any>();
-      for (let sub of item.subApi) {
-        let itemKey = apiIdx + "," + subApiIndex++;
-        let itemTitle = sub.httpMethod + ":" + item.api + sub.api;
-        children.push({
-          value: itemKey,
-          label: itemTitle
-        });
-      }
-      data.push({
-        value: ''+apiIdx,
-        label: menuKey,
-        children: children
-      });
-      apiIdx++;
-    }
+    const { collapsed, api, apiIndex, meta, apiTree } = this.state;
+    let apiIndexArray: any = apiIndex.split(',');
+    let sidebarWidth = (collapsed ? 300 : 32);
     return (
       <Container style={{ height: '100%' }}>
-        <Sidebar style={{ height: '100%' }}>
-            <Tree data={data} style={{maxHeight: 'none'}} onSelect={this.onSelectMenu}/>
+        <Sidebar style={{ height: '100%' }} width={sidebarWidth}>
+          <Tree data={apiTree} style={{ maxHeight: 'none' }} onSelect={this.onSelectMenu} />
         </Sidebar>
-        <Container>
+        <Container style={{ height: '100%', overflow: 'auto' }}>
           <Header>
             <Breadcrumb style={{ margin: '16px 0' }}>
-              <Breadcrumb.Item>{this.state.api}</Breadcrumb.Item>
+              <Breadcrumb.Item>{api}</Breadcrumb.Item>
             </Breadcrumb>
           </Header>
           <Content>
-            <StdApi meta={this.state.meta} apiIndex={this.state.apiIndex} />
+            <StdApi meta={meta} apiIndex={apiIndexArray} />
           </Content>
         </Container>
       </Container>
