@@ -1,6 +1,6 @@
 import React from 'react';
 import Api from './Api';
-import { Container, Sidebar, Breadcrumb, Header, Content, Tree, Icon } from 'rsuite';
+import { Container, Sidebar, Breadcrumb, Header, Content, Tree, Icon, Alert } from 'rsuite';
 import StdApi from './components/StdApi';
 import OnceIOApiModel from './model/OnceIOApiModel';
 import 'rsuite/dist/styles/rsuite-dark.css'
@@ -52,7 +52,7 @@ class App extends React.Component {
           label: (<span><Icon icon="setting" /> Setting</span>),
         },
         {
-          value: '$api' + apiIdx,
+          value: '$api',
           label: (<span><Icon icon="setting" /> Api</span>),
           children: apiTree
         }
@@ -65,8 +65,14 @@ class App extends React.Component {
   };
 
   onSelectMenu = (activeNode: any, value: any, event: any) => {
-    if(value === '$setting'){
-    } else if(value === '$api'){
+    let s = window.screen;
+    if (value === '$setting') {
+      if (!document.fullscreenElement) {
+        document.body.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    } else if (value === '$api') {
     } else {
       let apiIndex = value.split(',');
       let meta = this.state.meta;
