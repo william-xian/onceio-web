@@ -1,10 +1,11 @@
 import React from 'react';
 import Api from './Api';
-import { Container, Sidebar, Breadcrumb, Header, Content, Tree, Icon, Alert } from 'rsuite';
+import { Container, Sidebar, Breadcrumb, Header, Content, Tree, Icon, Alert, Modal, Button, Input, InputGroup } from 'rsuite';
 import StdApi from './components/StdApi';
 import OnceIOApiModel from './model/OnceIOApiModel';
 import 'rsuite/dist/styles/rsuite-dark.css'
 import './App.css'
+import InputGroupAddon from 'rsuite/lib/InputGroup/InputGroupAddon';
 
 class App extends React.Component {
   state = {
@@ -15,6 +16,15 @@ class App extends React.Component {
     apiIndex: ''
   };
   componentDidMount() {
+    let baseURL = window.location.search?.split("baseURL=")[1]?.split("&")[0];
+    if(baseURL) {
+      Api.defaults.baseURL = baseURL;
+    }
+    console.log();
+    this.init();
+  }
+
+  init() {
     Api.get('docs/apis').then((resp: any) => {
       let data = resp.data;
       let meta = this.state.meta;
@@ -60,10 +70,10 @@ class App extends React.Component {
       this.setState({ meta: meta, apiTree: menuTree });
     });
   }
+
   onCollapse = (collapsed: boolean) => {
     this.setState({ collapsed });
   };
-
   onSelectMenu = (activeNode: any, value: any, event: any) => {
     let s = window.screen;
     if (value === '$setting') {

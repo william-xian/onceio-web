@@ -1,12 +1,11 @@
 
 import React from 'react';
-import { Table, Input, Row, Form, InputNumber, DatePicker, Button, FormControl, FormGroup, ControlLabel, ButtonToolbar, Checkbox, IconButton, Icon, Popover, Whisper, InputGroup, TagGroup, Tag } from 'rsuite';
+import { Notification, Table, Input, Row, Form, InputNumber, DatePicker, Button, FormControl, FormGroup, ControlLabel, ButtonToolbar, Checkbox, IconButton, Icon, Popover, Whisper, InputGroup, TagGroup, Tag, ButtonGroup } from 'rsuite';
 import TablePagination from 'rsuite/lib/Table/TablePagination';
 import Api from '../Api';
 import { ApiModel, FieldModel, OnceIOApiModel, ServiceModel } from '../model/OnceIOApiModel';
 
 import './StdApi.css'
-
 
 function genericFormItem(field: FieldModel, val: any, showLabel: boolean) {
     let numberType = ['java.lang.Integer', 'java.lang.Short', 'java.lang.Float', 'java.lang.Double', 'int', 'short', 'float', 'double'];
@@ -121,7 +120,7 @@ class OIOTabel extends React.Component<OIOTabelProps, any>{
             let model = map.get(srvApi.entityClass);
             if (model) {
                 for (let c of model.fields) {
-                    let align: any = (c.type == 'java.lang.String') ? 'right' : 'left';
+                    let align: any = (c.type === 'java.lang.String') ? 'right' : 'left';
 
                     const speaker = (
                         <Popover title={c.name}>
@@ -270,6 +269,7 @@ class OIOTabel extends React.Component<OIOTabelProps, any>{
     }
 
     render() {
+        const { srvApi } = this.props;
         const { columns, data, pagination, allChecked, indeterminate, params } = this.state;
         const tags = new Array<any>();
         let obj: any = params;
@@ -311,12 +311,42 @@ class OIOTabel extends React.Component<OIOTabelProps, any>{
                         <Table.HeaderCell>Action</Table.HeaderCell>
                         <Table.Cell>
                             {(rowData: any) => {
-                                function handleAction() {
-                                    alert(`id:${rowData.id}`);
-                                }
                                 return (
                                     <span>
-                                        <a onClick={handleAction}>Remove</a>
+                                        <ButtonGroup>
+                                            <IconButton icon={<Icon icon="close" />} circle size="xs" onClick={() => {
+                                              Notification.warning({
+                                                title: '删除操作',
+                                                duration: 5000,
+                                                description: (
+                                                  <div>
+                                                    <p>删除数据将无法找回确认删除.</p>
+                                                    <ButtonToolbar>
+                                                      <Button
+                                                        onClick={() => {
+                                                            Api.delete(`${srvApi.api}?id$eq=${rowData.id}`).then(() => {
+                                                                this.onSearch();
+                                                            }).finally(() => {
+                                                                Notification.close();
+                                                            });
+                                                        }}
+                                                      >
+                                                        删除
+                                                      </Button>
+                                                      <Button
+                                                        onClick={() => {
+                                                          Notification.close();
+                                                        }}
+                                                      >
+                                                        取消
+                                                      </Button>
+                                                    </ButtonToolbar>
+                                                  </div>
+                                                )
+                                              });
+                                            }}></IconButton>
+                                            <IconButton icon={<Icon icon="edit" />} circle size="xs"></IconButton>
+                                        </ButtonGroup>
                                     </span>
                                 );
                             }}
