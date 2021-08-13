@@ -204,9 +204,9 @@ class OIOTabel extends React.Component<OIOTabelProps, any>{
                     );
                     let col = (
                         <Table.Column key={c.name} align={align} resizable width={160}>
-                            <Table.HeaderCell>{c.name}
+                            <Table.HeaderCell><span>{c.name}</span> 
                                 <Whisper trigger="click" speaker={speaker}>
-                                    <IconButton size="xs" icon={<Icon icon="search" />}></IconButton>
+                                    <Icon icon="search" style={{marginLeft:8}}/>
                                 </Whisper>
                             </Table.HeaderCell>
                             <OIOCell dataKey={c.name} type={c.type} {...this.props} ></OIOCell>
@@ -284,7 +284,7 @@ class OIOTabel extends React.Component<OIOTabelProps, any>{
                         {tags}
                     </TagGroup>
                 </Row>
-                <Table rowKey="id" data={data} autoHeight={true} virtualized>
+                <Table rowKey="id" data={data} autoHeight={true} bordered cellBordered virtualized>
                     <Table.Column width={64} fixed="left">
                         <Table.HeaderCell>
                             <Checkbox
